@@ -1,7 +1,7 @@
 {
     "name": "sign-in-system",
     "version": "1.0.0",
-    "description": "A student sign-in system",
+    "description": "Student sign-in system",
     "main": "app.js",
     "dependencies": {
         "body-parser": "^1.20.3",

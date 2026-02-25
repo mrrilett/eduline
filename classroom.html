@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Eduline</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<!----------------------------------------
+      Page styling and formatting
+---------------------------------------->
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial;
+    font-size: 25px;
+    color: cornflowerblue;
+}
+
+#myVideo {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%; 
+    min-height: 100%;
+}
+
+.hero-text {
+    text-align: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+}
+
+.lc{
+    position: relative;
+    display: inline-block;
+    color: rgb(12, 5, 207);
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0);
+    box-shadow:inset 0px 0px 0px 10px rgb(12, 5, 207);
+}
+
+.lc:after{
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 80%;
+}
+
+/* AUTOCOMPLETE STYLING */
+ul {
+    list-style-type: none;
+}
+
+ul li:before {
+  content: "📖";
+  position: absolute;
+  margin-left: -20px;
+}
+
+.autocomplete-suggestion {
+  padding: 8px;
+  cursor: pointer;
+  background-color: #2f3742;
+}
+
+.autocomplete-suggestion:hover {
+  background-color: #566479;
+}
+
+    
+input {
+    font-family: Arial;
+    font-size: 17px;
+}
+
+a:link {
+    color: whitesmoke;
+}
+
+button{
+  color: rgb(255, 255, 255);
+  font-family: Arial;
+  font-size: 17px;
+  background-color: rgb(0, 120, 70);
+}
+
+
+/* The snackbar - position it at the bottom and in the middle of the screen */
+#snackbar {
+  visibility: hidden; /* Hidden by default. Visible on click */
+  min-width: 250px; /* Set a default minimum width */
+  background-color: #00e650; /* Black background color */
+  color: #000000; /* White text color */
+  text-align: center; /* Centered text */
+  border-radius: 5px; /* Rounded borders */
+  padding: 16px; /* Padding */
+  position: fixed; /* Sit on top of the screen */
+  z-index: 1; /* Add a z-index if needed */
+  left: 50%; /* Center the snackbar */
+  bottom: 30px; /* 30px from the bottom */
+  transform: translate(-50%);
+}
+
+/* Show the snackbar when clicking on a button (class added with JavaScript) */
+#snackbar.show {
+  visibility: visible; /* Show the snackbar */
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+  However, delay the fade out process for 2.5 seconds */
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 4.5s;
+  animation: fadein 0.5s, fadeout 0.5s 4.5s;
+}
+
+/* Animations to fade the snackbar in and out */
+@-webkit-keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@-webkit-keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
+
+@keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
+
+      
+</style>
+
+<body>
+  <video autoplay muted loop id="myVideo">
+    <source src="/media/bg.mp4" type="video/mp4">
+    Your browser does not support HTML5 video.
+  </video>
+
+  <div class="hero-text">
+    <h1>Eduline<span class="lc">RM</span></h1>
+
+    <!-- Signin confirmation message -->
+   <div id="snackbar">
+  The Library has been notified!<br><br>
+  Remind the student to check in when they arrive.
+</div>
+
+    <form id="signInForm">
+      <label for="autocompleteInput">Search for Student: </label>
+      <input type="text" id="autocompleteInput" autocomplete="off" required>
+      
+      <label for="numberInput"></label>
+      <input type="number" class="hiddenOEN" id="numberInput" required readonly>
+      <button type="submit">Send to Learning Commons</button>
+      
+      <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
+    </form>
+
+    <p id="let_user_know"></p>
+
+  </div>
+  
+  <script>
+    document.getElementById("numberInput").hidden = true;
+    const autocompleteInput = document.getElementById('autocompleteInput');
+    const suggestionsBox = document.getElementById('autocompleteSuggestions');
+    const numberInput = document.getElementById('numberInput');
+
+    // Function to fetch autocomplete suggestions
+    async function fetchSuggestions(query) {
+      const response = await fetch(`/autocomplete?q=${encodeURIComponent(query)}`);
+      const suggestions = await response.json();
+      return suggestions;
+    }
+
+    // Handle input events to show suggestions
+    autocompleteInput.addEventListener('input', async function () {
+      const query = this.value;
+      suggestionsBox.innerHTML = ''; // Clear previous suggestions
+
+      if (query.length > 1) {
+        const suggestions = await fetchSuggestions(query);
+        suggestions.forEach(student => {
+          const suggestionElement = document.createElement('div');
+          suggestionElement.classList.add('autocomplete-suggestion');
+          suggestionElement.textContent = `${student.first_name} ${student.last_name} (${student.oen})`;
+
+          // When a suggestion is clicked, fill in the OEN and clear suggestions
+          suggestionElement.addEventListener('click', function () {
+            autocompleteInput.value = `${student.first_name} ${student.last_name}`;
+            numberInput.value = student.oen;
+            suggestionsBox.innerHTML = ''; // Clear suggestions
+          });
+          suggestionsBox.appendChild(suggestionElement);
+        });
+      }
+    });
+
+    function confirmSignIn() {
+      // Get the snackbar DIV
+      var x = document.getElementById("snackbar");
+      // Add the "show" class to DIV
+      x.className = "show";
+      // After 3 seconds, remove the show class from DIV
+      setTimeout(function(){ x.className = x.className.replace("show", ""); }, 5000);
+    }
+    // Handle form submission to generate barcode
+    
+    document.getElementById('signInForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const studentId = document.getElementById('numberInput').value;
+      const response = await fetch('/send-to-library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId })
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        confirmSignIn(); // Show success message
+      } else {
+        alert('Student not found or already in queue.');
+      }
+
+      // Clear inputs after 2 seconds
+      setTimeout(() => {
+        autocompleteInput.value = '';
+        numberInput.value = '';
+      }, 2000);
+    });
+
+    </script>
+</body>
+</html>

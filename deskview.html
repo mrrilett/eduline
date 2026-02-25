@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Styling for entire deskvie-->
+<style>
+body {
+    background-color: #2f3742;
+    color: #dfe0e4;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.Eduline {
+  font-size: 80px;
+  text-align: center;
+  color: #000000;
+  animation: glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 1px #fff, 0 0 2px #fff, 0 0 3px #FF0000, 0 0 4px #FF0000, 0 0 5px #FF0000, 0 0 6px #FF0000, 0 0 7px #FF0000;
+  }
+  to {
+    text-shadow: 0 0 2px #fff, 0 0 4px #fff, 0 0 6px #FF0000, 0 0 8px #FF0000, 0 0 10px #FF0000, 0 0 12px #FF0000, 0 0 14px #FF0000;
+  }
+}
+
+.badge {
+  background-color: red;
+  color: white;
+  padding: 4px 8px;
+  text-align: center;
+  border-radius: 5px;
+}
+
+/* Style the tab */
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+
+/* Style the buttons inside the tab */
+.tab button {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+  font-size: 17px;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
+}
+
+#studentList {
+    list-style-type: none; /* Removes bullet points */
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Creates two equal columns */
+    grid-auto-rows: minmax(30px, auto); /* Each row has a minimum height of 30px, adjust as needed */
+    gap: 10px; /* Controls the gap between the list items */
+    max-height: 100%; /* Adjust if needed */
+    font-size: 20px;
+}
+
+#studentList li {
+    padding: 5px; /* Optional: Padding for each item */
+    word-wrap: break-word; /* Ensures long text breaks properly */
+}
+
+.trash-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0;
+}
+
+.trash-button:hover {
+  color: red; /* Optional hover effect */
+}
+
+.autocomplete-suggestion {
+  padding: 8px;
+  cursor: pointer;
+  background-color: #2f3742;
+}
+
+.autocomplete-suggestion:hover {
+  background-color: #566479;
+}
+
+.generatedBarcodeImage{
+  padding: 100px;
+  animation: hideshow 10s ease infinite;
+}
+
+/* Go from zero to full opacity */
+@keyframes fadeEffect {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+.fullLogDisplay{
+  background-color: #000000;
+  color: chartreuse;
+}
+
+.pending { 
+  font-weight: bold; 
+}
+
+.confirm-btn {
+  background: #4CAF50; 
+  color: white; 
+  border: none; 
+  padding: 4px 8px; 
+  border-radius: 4px; 
+  cursor: pointer;
+}
+.confirm-btn:hover { 
+  background: #45a049; 
+}
+
+.time { 
+  font-size: 0.8em; 
+  color: #666; 
+  margin-left: 10px; 
+}
+
+</style>
+</head>
+<body>
+
+<h1 class="Eduline">Deskview</h1>
+
+<!------------------------------------------------------------------
+                Layout and formatting for tabs
+-------------------------------------------------------------------->
+
+<!-- intial tab layout-->
+<div class="tab"> 
+  <button class="tablinks" onclick="openSection(event, 'signed-in')" id="defaultOpen">Currently Signed-In</button>
+  <button class="tablinks" onclick="openSection(event, 'manual-in-out')">Manual Sign-In/Sign Out</button>
+  <button class="tablinks" onclick="openSection(event, 'barcode-gen')">Generate Barcode</button>
+  <button class="tablinks" onclick="openSection(event, 'mega-search')">Mega Search</button>
+  <button class="tablinks" onclick="openSection(event, 'danger-zone')">Danger Zone</button>
+</div>
+
+<!-- Individual tab layouts-->
+
+<div id="signed-in" class="tabcontent">
+    <section id="SIGNED IN STUDENTS">
+        <h1>Currently Signed-In Students <span class="badge" id="badgeVal">0</span></h1>
+        <ul class="signedInContainer" id="studentList"></ul>
+    </section>
+</div>
+
+<div id="manual-in-out" class="tabcontent">
+  <section id="MANUAL SIGN IN">
+
+    <form id="signInForm">
+      <label for="autocompleteInput">Search for student by Name, SID, or OEN:</label>
+      <input type="text" id="manual_autocompleteInput" autocomplete="off" required>
+      <label for="numberInput"></label>
+      <input type="number" class="hiddenOEN" id="manual_numberInput" required readonly>
+      <button type="submit">Sign In/Out</button>
+      <div id="manual_autocompleteSuggestions" class="autocomplete-suggestions"></div>
+    </form>
+
+    <div>
+      <p id="mcm">Waiting...</p>
+    </div>
+
+    <script>
+    document.getElementById("manual_numberInput").hidden = true;
+    const manual_autocompleteInput = document.getElementById('manual_autocompleteInput');
+    const manual_suggestionsBox = document.getElementById('manual_autocompleteSuggestions');
+    const manual_numberInput = document.getElementById('manual_numberInput');
+
+    // Function to fetch autocomplete suggestions
+    async function fetchSuggestions(query) {
+      const response = await fetch(`/autocomplete?q=${encodeURIComponent(query)}`);
+      const suggestions = await response.json();
+      return suggestions;
+    }
+
+    // Handle input events to show suggestions
+    manual_autocompleteInput.addEventListener('input', async function () {
+      const query = this.value;
+      manual_suggestionsBox.innerHTML = ''; // Clear previous suggestions
+
+      if (query.length > 1) {
+        const suggestions = await fetchSuggestions(query);
+        suggestions.forEach(student => {
+          const suggestionElement = document.createElement('div');
+          suggestionElement.classList.add('autocomplete-suggestion');
+          suggestionElement.textContent = `${student.first_name} ${student.last_name} (OEN: ${student.oen})`;
+
+          // When a suggestion is clicked, fill in the OEN and clear suggestions
+          suggestionElement.addEventListener('click', function () {
+            manual_autocompleteInput.value = `${student.first_name} ${student.last_name}`;
+            manual_numberInput.value = student.oen;
+            manual_suggestionsBox.innerHTML = ''; // Clear suggestions
+          });
+          manual_suggestionsBox.appendChild(suggestionElement);
+        });
+      }
+    });
+
+    // manual sign in script
+    document.getElementById('signInForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const studentId = manual_numberInput.value;
+
+      const response = await fetch('/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId })
+      });
+      const result = await response.json();
+
+      let msg = ""
+      const emptyString = ""
+      const timeShown = 2000 // 2s
+
+      //confirm sign in or out for user on the screen
+      if (result.action == 'sign-in'){
+        document.getElementById("mcm").innerText="Complete.";
+        setTimeout(function(){
+          var x = document.getElementById("mcm");
+          x.innerText=" ";
+        }, 3000);
+  
+      }
+      else{
+        document.getElementById("mcm").innerText=" ";
+      }
+      setTimeout(() => {
+        manual_autocompleteInput.value = ''
+        manual_numberInput.value=''
+        document.getElementById('mcm').value = 'Waiting...';  // Clear input
+      }, timeShown)
+      document.getElementById('studentId').value = '';  // Clear input
+    });
+    </script>
+
+  </section>
+</div>
+
+<div id="barcode-gen" class="tabcontent">
+  <section id="BARCODE GENERATOR">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <form id="barcodeForm">
+      <label for="autocompleteInput">Search for student by Name, SID, or OEN:</label>
+      <input type="text" id="autocompleteInput" autocomplete="off" required>
+      <label for="numberInput"></label>
+      <input type="number" class="hiddenOEN" id="numberInput" required readonly>
+      <button type="submit">Generate Barcode</button>
+      <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
+    </form>
+
+    <div class="generatedBarcodeImage">
+      <svg style="padding: 100px 100px;" id="barcode"></svg>
+    </div>
+
+    <script>
+    document.getElementById("numberInput").hidden = true;
+    const autocompleteInput = document.getElementById('autocompleteInput');
+    const suggestionsBox = document.getElementById('autocompleteSuggestions');
+    const numberInput = document.getElementById('numberInput');
+
+    // Function to fetch autocomplete suggestions
+    async function fetchSuggestions(query) {
+      const response = await fetch(`/autocomplete?q=${encodeURIComponent(query)}`);
+      const suggestions = await response.json();
+      return suggestions;
+    }
+
+    // Handle input events to show suggestions
+    autocompleteInput.addEventListener('input', async function () {
+      const query = this.value;
+      suggestionsBox.innerHTML = ''; // Clear previous suggestions
+
+      if (query.length > 1) {
+        const suggestions = await fetchSuggestions(query);
+        suggestions.forEach(student => {
+          const suggestionElement = document.createElement('div');
+          suggestionElement.classList.add('autocomplete-suggestion');
+          suggestionElement.textContent = `${student.first_name} ${student.last_name} (OEN: ${student.oen})`;
+
+          // When a suggestion is clicked, fill in the OEN and clear suggestions
+          suggestionElement.addEventListener('click', function () {
+            autocompleteInput.value = `${student.first_name} ${student.last_name}`;
+            numberInput.value = student.oen;
+            suggestionsBox.innerHTML = ''; // Clear suggestions
+          });
+          suggestionsBox.appendChild(suggestionElement);
+        });
+      }
+    });
+
+    // Handle form submission to generate barcode
+    document.getElementById('barcodeForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const number = numberInput.value;
+      JsBarcode("#barcode", number, { format: "CODE39" });
+    });
+    </script>
+  </section>
+</div>
+
+<div id="mega-search" class="tabcontent">
+    <section id="MEGA SEARCH">
+        <h1>Mega Search</h1>
+        
+        <pre>Example searches: 
+    
+          <i>"Connor"</i> to find students with the name Connor
+          <i>"9-30"</i> to find logs from September 30th
+          <i>"2024-09-30T01:10"</i> to find logs from September 30th, 2024 at 1:10pm
+        </pre>
+        <label for="search-input">Search:</label>
+          <input type="text" id="search-input" oninput="searchLogs()">
+        
+        <ul id="logDisplay"></ul>
+      </section>
+</div>
+
+<div id="danger-zone" class="tabcontent">
+    <section id="DANGER ZONE">
+      <p>Performing any of the actions in this tab may result in data loss, file corruption, or network strain.</p>
+
+      <h2>Upload Student CSV</h2>
+      <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="csvFile" accept=".csv" required />
+        <button type="submit">Upload and Replace</button>
+      </form>
+
+      <p id="message"></p>
+
+      <script>
+        const form = document.getElementById('uploadForm');
+        const message = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const formData = new FormData(form);
+          message.textContent = 'Uploading...';
+
+          const response = await fetch('/update-db', {
+            method: 'POST',
+            body: formData
+          });
+
+          const text = await response.text();
+          alert(text);
+          const now = new Date();
+          const db_timestamp = now.toLocaleString();
+          message.textContent = `Last updated: ${db_timestamp}`;
+        });
+      </script>
+
+      <h2>Historical Log Data</h2>
+      <p>Click refresh below to display the entire historical log.</p>
+      <button onclick="viewLog('full')">Refresh Log</button><br>
+      <ul id="fullLogDisplay"></ul>
+
+      </section>
+</div>
+
+<!------------------------------------------------------------------
+                Scripts for tab functions
+-------------------------------------------------------------------->
+<script>
+document.getElementById("defaultOpen").click(); //set default tab
+
+// tab handling
+function openSection(evt, tabName) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tablinks");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.className += " active";
+}
+
+// tab functions
+async function refreshSignedInList() {
+  try {
+    // 1. FETCH DATA FIRST
+    const response = await fetch('/currently-signed-in');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const students = await response.json();
+
+    // 2. Clear the list
+    const studentList = document.getElementById('studentList');
+    studentList.innerHTML = '';
+
+    // 3. Update badge
+    document.getElementById('badgeVal').textContent = students.length;
+
+    // 4. Loop through students and build rows
+    students.forEach(student => {
+      const li = document.createElement('li');
+      const time = new Date(student.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      if (student.status === 'pending') {
+        // PENDING: Show bell
+        li.innerHTML = `
+          <span class="pending">${student.first_name} ${student.last_name} (${student.student_id})</span>
+          <span class="time">${time}</span>
+          <button class="confirm-btn" data-id="${student.student_id}">🔔</button>
+        `;
+        li.classList.add('pending-row');
+      } else {
+        // CONFIRMED: Show trash
+        li.innerHTML = `
+          <span>${student.first_name} ${student.last_name} (${student.student_id})</span>
+          <span class="time">${time}</span>
+          <button class="trash-button" data-id="${student.student_id}">🗑️</button>
+        `;
+      }
+
+      studentList.appendChild(li);
+    });
+
+    // 5. EVENT DELEGATION (only add once!)
+    // Remove old listener if exists
+    studentList.removeEventListener('click', handleStudentClick);
+    studentList.addEventListener('click', handleStudentClick);
+
+  } catch (err) {
+    console.error('Failed to refresh list:', err);
+  }
+}
+
+// 6. Move event handler OUTSIDE to avoid redefining
+function handleStudentClick(e) {
+  const btn = e.target;
+  const studentId = btn.dataset.id;
+  if (!studentId) return;
+
+  if (btn.classList.contains('confirm-btn')) {
+    fetch('/confirm-arrival', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId })
+    }).then(() => refreshSignedInList());
+  }
+
+  if (btn.classList.contains('trash-button')) {
+    fetch('/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId })
+    }).then(() => refreshSignedInList());
+  }
+}
+
+/*
+async function refreshSignedInList() {
+  try {
+    const response = await fetch('/currently-signed-in');
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const students = await response.json();
+
+    // ---- UI updates -------------------------------------------------
+    const studentList = document.getElementById('studentList');
+    studentList.innerHTML = '';                     // clear old rows
+
+    document.getElementById('badgeVal').textContent = students.length;
+
+    students.forEach(student => {
+      const li = document.createElement('li');
+      li.textContent = `${student.first_name} ${student.last_name} (${student.student_id})`;
+
+      // Trash button
+      const btn = document.createElement('button');
+      btn.className = 'trash-button';
+      btn.innerHTML = '🗑️';
+      btn.dataset.studentId = student.student_id;   // data-student-id
+
+      btn.addEventListener('click', () => {
+        // 1. Force a sign-out in the DB
+        forceSignOut(student.student_id);
+        // 2. Remove the <li> immediately
+        li.remove();
+        // 3. Update badge
+        document.getElementById('badgeVal').textContent = 
+          parseInt(document.getElementById('badgeVal').textContent) - 1;
+      });
+
+      li.appendChild(btn);
+      studentList.appendChild(li);
+    });
+  } catch (e) {
+    console.error('refreshSignedInList error:', e);
+  }
+}
+*/
+async function forceSignOut(studentId) {
+  try {
+    await fetch('/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId })
+    });
+    console.log(`Forced sign-out for ${studentId}`);
+  } catch (e) {
+    console.error('forceSignOut error:', e);
+  }
+}
+
+
+async function viewLog(type) {
+  const log = await fetch(`/full-log`);
+      const logData = await log.text();
+      fullLogDisplay.innerHTML = logData;
+}
+
+async function replaceDatabase() {
+  alert('Database has been replaced.');
+}
+
+async function searchLogs() {
+        const query = document.getElementById('search-input').value;
+        const resultsDiv = document.getElementById('results');
+
+        if (query.length === 0) {
+            logDisplay.innerHTML = ''; // Clear the results if no input
+            return;
+        }
+
+        // Fetch search results from the server
+        const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Display the logs in a <p> tag
+              logDisplay.innerHTML = '<p>' + data.logs.join('<br>') + '</p>';
+        } else {
+          logDisplay.innerHTML = '<p>No logs found.</p>';
+        }
+    }
+
+
+setInterval(refreshSignedInList, 5000); // Auto refresh every 5 seconds
+refreshSignedInList();  // Initial load
+</script>
+   
+</body>
+</html> 

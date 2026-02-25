@@ -1,0 +1,18 @@
+{
+    "name": "sign-in-system",
+    "version": "1.0.0",
+    "description": "A student sign-in system",
+    "main": "app.js",
+    "dependencies": {
+        "body-parser": "^1.20.3",
+        "ejs": "^3.1.6",
+        "express": "^4.21.1",
+        "express-session": "^1.18.1",
+        "fs": "^0.0.1-security",
+        "path": "^0.12.7",
+        "sqlite3": "^5.1.7"
+    },
+    "scripts": {
+        "start": "node app.js"
+    }
+}

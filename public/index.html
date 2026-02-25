@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Eduline</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial;
+    font-size: 20px;
+}
+
+#myVideo {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%; 
+    min-height: 100%;
+}
+
+.hero-text {
+    text-align: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+}
+
+.lc{
+    position: relative;
+    display: inline-block;
+    color: rgb(255, 0, 0);
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0);
+    box-shadow:inset 0px 0px 0px 10px rgb(255, 0, 0);
+}
+
+.lc:after{
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 80%;
+}
+
+ul {
+    list-style-type: none;
+}
+
+input {
+    font-family: Arial;
+    font-size: 20px;
+}
+
+a:link {
+    color: whitesmoke;
+}
+
+    /* The snackbar - position it at the bottom and in the middle of the screen */
+#snackbar {
+  visibility: hidden; /* Hidden by default. Visible on click */
+  min-width: 250px; /* Set a default minimum width */
+  color: #000000; /* White text color */
+  text-align: center; /* Centered text */
+  border-radius: 5px; /* Rounded borders */
+  padding: 16px; /* Padding */
+  position: fixed; /* Sit on top of the screen */
+  z-index: 1; /* Add a z-index if needed */
+  left: 50%; /* Center the snackbar */
+  bottom: 30px; /* 30px from the bottom */
+  transform: translate(-50%, 50%);
+}
+
+/* Show the snackbar when clicking on a button (class added with JavaScript) */
+#snackbar.show {
+  visibility: visible; /* Show the snackbar */
+  /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+  However, delay the fade out process for 2.5 seconds */
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 1.5s;
+  animation: fadein 0.5s, fadeout 0.5s 1.5s;
+}
+
+/* Animations to fade the snackbar in and out */
+@-webkit-keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@keyframes fadein {
+  from {bottom: 0; opacity: 0;}
+  to {bottom: 30px; opacity: 1;}
+}
+
+@-webkit-keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
+
+@keyframes fadeout {
+  from {bottom: 30px; opacity: 1;}
+  to {bottom: 0; opacity: 0;}
+}
+
+      
+</style>
+
+<body>
+  <video autoplay muted loop id="myVideo">
+    <source src="/media/bg.mp4" type="video/mp4">
+    Your browser does not support HTML5 video.
+  </video>
+
+  <div class="hero-text">
+    <h1>Eduline<span class="lc">LC</span></h1>
+
+     <!-- Signin confirmation message -->
+   <div id="snackbar">
+    <img src="media/check.png"\/>
+  </div>
+
+    <form id="signInForm">
+      <input type="text" id="studentId" placeholder="Scan your Student ID" required>
+      <button type="submit">Submit</button>
+    </form>
+
+    <p id="let_user_know">place barcode under reader...</p>
+
+  </div>
+
+  <script>
+    document.getElementById('signInForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const studentId = document.getElementById('studentId').value;
+
+      const response = await fetch('/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId })
+      });
+      const result = await response.json();
+    
+      let msg = ""
+      const emptyString = ""
+      const timeShown = 2000 // 2s
+
+      //confirm sign in or out for user on the screen
+      if (result.action == 'sign-in'){
+        confirmSignIn(); // mmsg = '<img src="media/check.png"\/>';
+      } else{
+        msg = 'Thanks for visiting!';
+      }
+
+      document.getElementById('let_user_know').innerHTML = msg;
+        setTimeout(() => {
+          document.getElementById('let_user_know').innerHTML = emptyString
+        }, timeShown)
+
+    function confirmSignIn() {
+      // Get the snackbar DIV
+      var x = document.getElementById("snackbar");
+      // Add the "show" class to DIV
+      x.className = "show";
+      // After 3 seconds, remove the show class from DIV
+      setTimeout(function(){ x.className = x.className.replace("show", ""); }, 2000);
+    }
+
+
+      document.getElementById('studentId').value = '';  // Clear input
+    });
+  </script>
+</body>
+</html>
